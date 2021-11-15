@@ -53,6 +53,9 @@ declare module 'styled-components' {
       focusedBorderColor: string;
       css?: string | FlattenSimpleInterpolation;
       focusedCss?: string | FlattenSimpleInterpolation;
+      overflowX?: string;
+      overflowY?: string;
+      maxHeight?: string | number;
     },
     input: {
       css?: string | FlattenSimpleInterpolation;

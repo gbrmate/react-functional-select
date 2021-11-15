@@ -147,6 +147,7 @@ export type SelectProps = Readonly<{
   getOptionValue?: OptionValueCallback;
   onInputChange?: (value?: string) => any;
   initialValue?: OptionData | OptionData[];
+  onChange?: (data: OptionData) => any;
   onSearchChange?: (value?: string) => any;
   onOptionChange?: (data: OptionData) => any;
   onInputBlur?: FocusEventHandler<HTMLInputElement>;
@@ -172,7 +173,9 @@ const ValueWrapper = styled.div`
   flex: 1 1 0%;
   display: flex;
   flex-wrap: wrap;
-  overflow: hidden;
+  overflow-x: ${({ theme }) => theme.control.overflowX || "hidden"};
+  overflow-y: ${({ theme }) => theme.control.overflowY || "hidden"};
+  max-height: ${({ theme }) => theme.control.maxHeight};
   position: relative;
   align-items: center;
   box-sizing: border-box;
@@ -249,6 +252,7 @@ const Select = forwardRef<SelectRef, SelectProps>((
     onInputFocus,
     onInputChange,
     ariaLabelledBy,
+    onChange,
     onOptionChange,
     onSearchChange,
     getOptionLabel,
@@ -290,6 +294,8 @@ const Select = forwardRef<SelectRef, SelectProps>((
   const menuOpenRef = useRef<boolean>(false);
   const prevMenuOptionsLength = useRef<number>();
   const onChangeEventValue = useRef<boolean>(false);
+  const onOuterStateChange = useRef<boolean>(false);
+  const onChangeIsFunc = useRef<boolean>(isFunction(onChange));
   const onSearchChangeIsFunc = useRef<boolean>(isFunction(onSearchChange));
   const onOptionChangeIsFunc = useRef<boolean>(isFunction(onOptionChange));
 
@@ -359,6 +365,7 @@ const Select = forwardRef<SelectRef, SelectProps>((
     scrollMenuIntoView,
   );
 
+  const onChangeRef = useCallbackRef(onChange);
   const onSearchChangeRef = useCallbackRef(onSearchChange);
   const onOptionChangeRef = useCallbackRef(onOptionChange);
 
@@ -427,6 +434,7 @@ const Select = forwardRef<SelectRef, SelectProps>((
         setFocusedOption(FOCUSED_OPTION_DEFAULT);
       },
       setValue: (option?: OptionData) => {
+        onOuterStateChange.current = Boolean(option);
         const normalizedOptions = normalizeValue(option, getOptionValueFn, getOptionLabelFn);
         setSelectedOption(normalizedOptions);
       },
@@ -463,6 +471,7 @@ const Select = forwardRef<SelectRef, SelectProps>((
    * ..are defined inside of a callback wrapper returned from 'useCallbackRef' custom hook
    */
   useEffect(() => {
+    onChangeIsFunc.current = isFunction(onChange);
     onSearchChangeIsFunc.current = isFunction(onSearchChange);
     onOptionChangeIsFunc.current = isFunction(onOptionChange);
   });
@@ -495,17 +504,35 @@ const Select = forwardRef<SelectRef, SelectProps>((
    */
   useUpdateEffect(() => {
     const { current: isDefinedFunc } = onOptionChangeIsFunc;
-
+    
     if (isDefinedFunc) {
       const normalizedOptionValue = isMulti
-        ? selectedOption.map((x) => x.data)
-        : isArrayWithLength(selectedOption)
-          ? selectedOption[0].data
-          : null;
-
+      ? selectedOption.map((x) => x.data)
+      : isArrayWithLength(selectedOption)
+      ? selectedOption[0].data
+      : null;
+      
       onOptionChangeRef(normalizedOptionValue);
     }
   }, [onOptionChangeRef, isMulti, selectedOption]);
+
+
+  useUpdateEffect(() => {
+    if(!onOuterStateChange.current) {
+      const { current: isDefinedFunc } = onChangeIsFunc;
+      
+      if (isDefinedFunc) {
+        const normalizedOptionValue = isMulti
+        ? selectedOption.map((x) => x.data)
+        : isArrayWithLength(selectedOption)
+        ? selectedOption[0].data
+        : null;
+        
+        onChangeRef(normalizedOptionValue);
+      }
+    }
+    onOuterStateChange.current = false;
+  }, [onChangeRef, isMulti, selectedOption]);
 
   /**
    * useUpdateEffect:
